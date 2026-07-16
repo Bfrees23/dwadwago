@@ -1,0 +1,28 @@
+name: Результат 2048
+description: Отправь счёт в общий рейтинг на GitHub
+title: "score: "
+labels: ["score"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Этот issue обработает бот: счёт попадёт в `data/leaderboard.json`.
+        Удобнее отправлять кнопку **«В GitHub»** прямо из игры — форма заполнится сама.
+  - type: textarea
+    id: payload
+    attributes:
+      label: JSON результата
+      description: Не меняй структуру, если отправил из игры
+      render: json
+      placeholder: |
+        {
+          "name": "Игрок",
+          "score": 1234,
+          "maxTile": 256,
+          "modeId": "4",
+          "modeLabel": "Классика (4×4)",
+          "auto": false,
+          "at": "2026-07-16T12:00:00.000Z"
+        }
+    validations:
+      required: true
