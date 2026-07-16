@@ -19,6 +19,7 @@ import {
   clearLeaderboard,
   formatDate,
 } from "./leaderboard.js";
+import { fetchGitHubLeaderboard, buildScoreIssueUrl } from "./github-leaderboard.js";
 
 const boardEl = document.getElementById("board");
 const scoreEl = document.getElementById("score");
@@ -33,6 +34,7 @@ const autoBar = document.getElementById("auto-bar");
 const autoSpeed = document.getElementById("auto-speed");
 const autoSpeedLabel = document.getElementById("auto-speed-label");
 const modePanels = document.getElementById("mode-panels");
+const modeSelect = document.getElementById("mode-select");
 const modeHint = document.getElementById("mode-hint");
 const challengeStat = document.getElementById("challenge-stat");
 const challengeLabel = document.getElementById("challenge-label");
@@ -42,6 +44,11 @@ const howDialog = document.getElementById("modal-how");
 const lbList = document.getElementById("leaderboard-list");
 const lbEmpty = document.getElementById("leaderboard-empty");
 const lbModeFilter = document.getElementById("lb-mode-filter");
+const lbLead = document.getElementById("lb-lead");
+const lbStatus = document.getElementById("lb-status");
+const tabGithub = document.getElementById("tab-github");
+const tabLocal = document.getElementById("tab-local");
+const btnClearLb = document.getElementById("btn-clear-lb");
 
 const SPEED_MS = { 1: 420, 2: 280, 3: 160, 4: 90, 5: 45 };
 const SPEED_LABELS = {
@@ -61,6 +68,8 @@ let blitzEndsAt = 0;
 let touchStart = null;
 let tileLayer = null;
 let lbFilterMode = mode.id;
+let lbTab = "github";
+let githubCache = { updatedAt: null, entries: [] };
 
 function currentSize() {
   return state?.size || mode.size;
@@ -325,6 +334,7 @@ function boardSizeCss(size) {
 }
 
 function syncModeUI() {
+  if (modeSelect) modeSelect.value = mode.id;
   modePanels.querySelectorAll(".mode-btn").forEach((btn) => {
     const active = btn.dataset.mode === mode.id;
     btn.classList.toggle("is-active", active);
@@ -347,6 +357,22 @@ function setMode(modeId, { restart = true } = {}) {
   if (lbModeFilter) lbModeFilter.value = mode.id;
   syncModeUI();
   if (restart) newGame();
+}
+
+function renderModeSelect() {
+  modeSelect.innerHTML = "";
+  for (const group of MODE_GROUPS) {
+    const og = document.createElement("optgroup");
+    og.label = group.title;
+    for (const m of getModesByGroup(group.id)) {
+      const opt = document.createElement("option");
+      opt.value = m.id;
+      opt.textContent = `${m.title} — ${m.label}`;
+      og.appendChild(opt);
+    }
+    modeSelect.appendChild(og);
+  }
+  modeSelect.value = mode.id;
 }
 
 function renderModePanels() {
@@ -389,18 +415,32 @@ function renderModePanels() {
   syncModeUI();
 }
 
-function renderLeaderboard() {
-  const filter = lbModeFilter?.value || "all";
-  const list = filter === "all" ? getLeaderboard(null) : getLeaderboard(filter);
+function setLbTab(tab) {
+  lbTab = tab;
+  tabGithub.classList.toggle("is-active", tab === "github");
+  tabLocal.classList.toggle("is-active", tab === "local");
+  tabGithub.setAttribute("aria-selected", String(tab === "github"));
+  tabLocal.setAttribute("aria-selected", String(tab === "local"));
+  btnClearLb.classList.toggle("hidden", tab !== "local");
+  if (tab === "github") {
+    lbLead.textContent = "Общий рейтинг в репозитории GitHub (`data/leaderboard.json`). Отправка — через Issue, запись делает Action.";
+  } else {
+    lbLead.textContent = "Локальный топ только на этом устройстве (localStorage), доступен офлайн.";
+  }
+  renderLeaderboard();
+}
+
+function paintLeaderboard(list) {
   lbList.innerHTML = "";
   lbEmpty.classList.toggle("hidden", list.length > 0);
 
   list.forEach((entry, index) => {
     const li = document.createElement("li");
     const modeText = entry.modeLabel || `${entry.modeId || 4}`;
+    const who = entry.githubUser ? ` @${entry.githubUser}` : "";
     li.innerHTML = `
       <span class="lb-rank">${index + 1}</span>
-      <span class="lb-name">${escapeHtml(entry.name)}${entry.auto ? " · авто" : ""} · ${escapeHtml(modeText)}</span>
+      <span class="lb-name">${escapeHtml(entry.name)}${escapeHtml(who)}${entry.auto ? " · авто" : ""} · ${escapeHtml(modeText)}</span>
       <span class="lb-meta">
         <span class="lb-score">${entry.score}</span>
         плитка ${entry.maxTile} · ${formatDate(entry.at)}
@@ -408,6 +448,33 @@ function renderLeaderboard() {
     `;
     lbList.appendChild(li);
   });
+}
+
+async function renderLeaderboard() {
+  const filter = lbModeFilter?.value || "all";
+  lbStatus.textContent = lbTab === "github" ? "Загрузка с GitHub…" : "";
+
+  if (lbTab === "local") {
+    const list = filter === "all" ? getLeaderboard(null) : getLeaderboard(filter);
+    paintLeaderboard(list);
+    lbStatus.textContent = list.length ? `${list.length} локальных результатов` : "";
+    return;
+  }
+
+  try {
+    const board = await fetchGitHubLeaderboard(filter === "all" ? null : filter);
+    githubCache = board;
+    paintLeaderboard(board.entries);
+    if (!board.entries.length) {
+      lbStatus.textContent = "Пока нет общих результатов — отправь свой через «В GitHub».";
+    } else {
+      const when = board.updatedAt ? ` · обновлён ${formatDate(board.updatedAt)}` : "";
+      lbStatus.textContent = `${board.entries.length} в общем рейтинге${when}`;
+    }
+  } catch {
+    paintLeaderboard([]);
+    lbStatus.textContent = "Не удалось загрузить рейтинг GitHub. Проверь сеть или открой позже.";
+  }
 }
 
 function escapeHtml(value) {
@@ -418,28 +485,42 @@ function escapeHtml(value) {
     .replaceAll('"', "&quot;");
 }
 
-function saveCurrentScore() {
+function currentEntry() {
   const name = setPlayerName(playerInput.value);
   playerInput.value = name;
-  saveScore({
+  return {
     name,
     score: state.score,
     maxTile: maxTile(state.grid),
     auto: usedAuto,
     modeId: mode.id,
     modeLabel: `${mode.title} (${mode.label})`,
-  });
+    at: new Date().toISOString(),
+  };
+}
+
+function saveCurrentScore() {
+  saveScore(currentEntry());
   lbFilterMode = mode.id;
   if (lbModeFilter) lbModeFilter.value = mode.id;
-  renderLeaderboard();
+  setLbTab("local");
+  lbDialog.showModal();
+}
+
+function saveScoreToGitHub() {
+  const entry = currentEntry();
+  saveScore(entry); // also keep a local copy
+  const url = buildScoreIssueUrl(entry);
+  window.open(url, "_blank", "noopener,noreferrer");
+  lbStatus.textContent = "Открой Issue на GitHub и нажми Submit — бот запишет счёт в рейтинг.";
+  setLbTab("github");
   lbDialog.showModal();
 }
 
 function populateLbFilter() {
   lbModeFilter.innerHTML = `<option value="all">Все режимы</option>`;
   for (const group of MODE_GROUPS) {
-    const groupModes = getModesByGroup(group.id);
-    for (const m of groupModes) {
+    for (const m of getModesByGroup(group.id)) {
       const opt = document.createElement("option");
       opt.value = m.id;
       opt.textContent = `${m.title} · ${m.label}`;
@@ -455,18 +536,26 @@ function bindEvents() {
   document.getElementById("btn-new").addEventListener("click", newGame);
   document.getElementById("btn-restart").addEventListener("click", newGame);
   document.getElementById("btn-save-score").addEventListener("click", saveCurrentScore);
+  document.getElementById("btn-save-github").addEventListener("click", saveScoreToGitHub);
   document.getElementById("btn-auto").addEventListener("click", toggleAuto);
   document.getElementById("btn-leaderboard").addEventListener("click", () => {
     populateLbFilter();
-    renderLeaderboard();
+    setLbTab(lbTab);
     lbDialog.showModal();
   });
   document.getElementById("btn-how").addEventListener("click", () => howDialog.showModal());
-  document.getElementById("btn-clear-lb").addEventListener("click", () => {
+  document.getElementById("btn-refresh-lb").addEventListener("click", () => renderLeaderboard());
+  btnClearLb.addEventListener("click", () => {
+    if (lbTab !== "local") return;
     const filter = lbModeFilter.value;
     clearLeaderboard(filter === "all" ? null : filter);
     renderLeaderboard();
   });
+
+  tabGithub.addEventListener("click", () => setLbTab("github"));
+  tabLocal.addEventListener("click", () => setLbTab("local"));
+
+  modeSelect.addEventListener("change", () => setMode(modeSelect.value));
 
   lbModeFilter.addEventListener("change", () => {
     lbFilterMode = lbModeFilter.value;
@@ -535,8 +624,10 @@ function bindEvents() {
 }
 
 function init() {
+  renderModeSelect();
   renderModePanels();
   populateLbFilter();
+  setLbTab("github");
   autoSpeedLabel.textContent = SPEED_LABELS[autoSpeed.value];
   bindEvents();
   newGame();

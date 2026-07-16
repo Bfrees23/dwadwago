@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="description" content="2048 — классическая головоломка с авторежимом и рейтингом. Работает прямо в браузере." />
+  <meta name="description" content="2048 — классическая головоломка с авторежимом, режимами поля и рейтингом на GitHub." />
   <meta name="theme-color" content="#0f3d3e" />
-  <title>2048 — игра с авторежимом и рейтингом</title>
+  <title>2048 — режимы, автопилот и рейтинг на GitHub</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -26,18 +26,23 @@
   <main class="shell">
     <section class="hero" aria-labelledby="brand-title">
       <h1 id="brand-title" class="brand-hero">2048</h1>
-      <p class="tagline">Сложи плитки. Побей рекорд. Или включи автопилот.</p>
+      <p class="tagline">Выбери режим. Сложи плитки. Запиши рекорд в GitHub.</p>
       <div class="cta-row">
         <button type="button" class="btn btn-primary" id="btn-new">Новая игра</button>
         <button type="button" class="btn btn-accent" id="btn-auto" aria-pressed="false">Авторежим</button>
       </div>
-      <div class="mode-block" aria-label="Режимы игры">
-        <div id="mode-panels" class="mode-panels"></div>
-        <p class="mode-hint" id="mode-hint">Классика: оригинальный 2048. Цель — 2048.</p>
-      </div>
     </section>
 
     <section class="play" aria-label="Игровое поле">
+      <div class="mode-dock" aria-label="Выбор режима">
+        <div class="mode-dock-head">
+          <label class="mode-caption" for="mode-select">Режим игры</label>
+          <select id="mode-select" class="mode-select" aria-label="Выбрать режим"></select>
+        </div>
+        <div id="mode-panels" class="mode-panels"></div>
+        <p class="mode-hint" id="mode-hint">Классика: оригинальный 2048. Цель — 2048.</p>
+      </div>
+
       <div class="scoreboard" id="scoreboard">
         <div class="stat">
           <span class="stat-label">Счёт</span>
@@ -65,7 +70,8 @@
           <p class="overlay-text" id="overlay-text">Больше ходов нет</p>
           <div class="overlay-actions">
             <button type="button" class="btn btn-primary" id="btn-restart">Сыграть ещё</button>
-            <button type="button" class="btn btn-ghost" id="btn-save-score">В рейтинг</button>
+            <button type="button" class="btn btn-ghost" id="btn-save-score">В локальный</button>
+            <button type="button" class="btn btn-accent" id="btn-save-github">В GitHub</button>
           </div>
         </div>
       </div>
@@ -94,13 +100,23 @@
         <h2 id="lb-title">Рейтинг</h2>
         <button type="submit" class="icon-close" aria-label="Закрыть">×</button>
       </header>
-      <p class="modal-lead">Топ результатов на этом устройстве. Счёт сохраняется локально и доступен офлайн.</p>
+
+      <div class="lb-tabs" role="tablist" aria-label="Тип рейтинга">
+        <button type="button" class="lb-tab is-active" id="tab-github" data-tab="github" role="tab" aria-selected="true">GitHub</button>
+        <button type="button" class="lb-tab" id="tab-local" data-tab="local" role="tab" aria-selected="false">Локальный</button>
+      </div>
+
+      <p class="modal-lead" id="lb-lead">Общий рейтинг хранится в репозитории (`data/leaderboard.json`) и обновляется через GitHub Issues + Actions.</p>
+
       <label class="lb-filter-label" for="lb-mode-filter">Показать</label>
       <select id="lb-mode-filter" class="lb-filter"></select>
       <ol class="leaderboard" id="leaderboard-list"></ol>
-      <p class="empty-lb hidden" id="leaderboard-empty">Пока пусто — сыграй партию и сохрани результат.</p>
+      <p class="empty-lb hidden" id="leaderboard-empty">Пока пусто — сыграй и отправь результат.</p>
+      <p class="lb-status" id="lb-status" aria-live="polite"></p>
+
       <menu class="modal-actions">
-        <button type="button" class="btn btn-ghost" id="btn-clear-lb">Очистить</button>
+        <button type="button" class="btn btn-ghost" id="btn-refresh-lb">Обновить</button>
+        <button type="button" class="btn btn-ghost" id="btn-clear-lb">Очистить локальный</button>
         <button type="submit" class="btn btn-primary">Закрыть</button>
       </menu>
     </form>
@@ -113,13 +129,11 @@
         <button type="submit" class="icon-close" aria-label="Закрыть">×</button>
       </header>
       <ul class="how-list">
+        <li>Сверху над полем выбери <strong>режим</strong> — в списке или кнопками (размеры 2×2–8×8 и особые правила).</li>
         <li>Свайпай или жми стрелки — плитки скользят в выбранную сторону.</li>
-        <li>Две одинаковые плитки сливаются в одну с удвоенным числом.</li>
-        <li>Выбери <strong>размер поля</strong> от 2×2 до 8×8 — у каждого свой рекорд и цель.</li>
-        <li>Или попробуй <strong>особый режим</strong>: Четвёрки, Хаос, Джокер, Спринт (50 ходов), Блиц (60 сек), Широкий хаос.</li>
-        <li>Цель — набрать максимальный счёт и дойти до целевой плитки (и дальше).</li>
-        <li><strong>Авторежим</strong> сам выбирает ходы по эвристике: пустые клетки, монотонность и гладкость поля.</li>
-        <li>После партии можно сохранить счёт в <strong>рейтинг</strong> под своим ником.</li>
+        <li><strong>Авторежим</strong> сам выбирает ходы по эвристике.</li>
+        <li><strong>Локальный рейтинг</strong> — только на этом устройстве.</li>
+        <li><strong>Рейтинг GitHub</strong>: кнопка «В GitHub» откроет Issue с результатом → Action запишет его в <code>data/leaderboard.json</code> → сайт подтянет общий топ.</li>
       </ul>
       <menu class="modal-actions">
         <button type="submit" class="btn btn-primary">Понятно</button>
@@ -128,9 +142,12 @@
   </dialog>
 
   <footer class="footer">
-    <p>Статическая игра на GitHub Pages · работает без сервера</p>
+    <p>GitHub Pages · общий рейтинг в репозитории · работает без своего сервера</p>
   </footer>
 
+  <noscript>
+    <p style="text-align:center;padding:2rem;font-family:sans-serif">Для игры нужен JavaScript. Открой сайт через http(s), не как локальный файл.</p>
+  </noscript>
   <script type="module" src="js/app.js"></script>
 </body>
 </html>
