@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="description" content="2048 — классическая головоломка с авторежимом и рейтингом. Работает прямо в браузере." />
+  <meta name="theme-color" content="#0f3d3e" />
+  <title>2048 — игра с авторежимом и рейтингом</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%230f3d3e'/%3E%3Ctext x='32' y='42' text-anchor='middle' font-size='28' font-family='sans-serif' font-weight='800' fill='%23f6c177'%3E2%3C/text%3E%3C/svg%3E" />
+</head>
+<body>
+  <div class="atmosphere" aria-hidden="true"></div>
+
+  <header class="topbar">
+    <p class="brand">2048</p>
+    <nav class="top-actions" aria-label="Основные действия">
+      <button type="button" class="btn btn-ghost" id="btn-leaderboard" aria-haspopup="dialog">Рейтинг</button>
+      <button type="button" class="btn btn-ghost" id="btn-how">Как играть</button>
+    </nav>
+  </header>
+
+  <main class="shell">
+    <section class="hero" aria-labelledby="brand-title">
+      <h1 id="brand-title" class="brand-hero">2048</h1>
+      <p class="tagline">Сложи плитки. Побей рекорд. Или включи автопилот.</p>
+      <div class="cta-row">
+        <button type="button" class="btn btn-primary" id="btn-new">Новая игра</button>
+        <button type="button" class="btn btn-accent" id="btn-auto" aria-pressed="false">Авторежим</button>
+      </div>
+    </section>
+
+    <section class="play" aria-label="Игровое поле">
+      <div class="scoreboard">
+        <div class="stat">
+          <span class="stat-label">Счёт</span>
+          <span class="stat-value" id="score">0</span>
+          <span class="stat-delta" id="score-delta" aria-hidden="true"></span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Рекорд</span>
+          <span class="stat-value" id="best">0</span>
+        </div>
+        <div class="stat player-stat">
+          <label class="stat-label" for="player-name">Игрок</label>
+          <input id="player-name" class="player-input" type="text" maxlength="16" autocomplete="nickname" placeholder="Гость" />
+        </div>
+      </div>
+
+      <div class="board-wrap">
+        <div class="board" id="board" role="grid" aria-label="Поле 4 на 4"></div>
+        <div class="overlay hidden" id="overlay" role="status" aria-live="polite">
+          <p class="overlay-title" id="overlay-title">Игра окончена</p>
+          <p class="overlay-text" id="overlay-text">Больше ходов нет</p>
+          <div class="overlay-actions">
+            <button type="button" class="btn btn-primary" id="btn-restart">Сыграть ещё</button>
+            <button type="button" class="btn btn-ghost" id="btn-save-score">В рейтинг</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="controls-hint">
+        <p>Стрелки или WASD · на телефоне — свайп</p>
+        <div class="pad" aria-label="Кнопки направления">
+          <button type="button" class="pad-btn" data-dir="up" aria-label="Вверх">↑</button>
+          <button type="button" class="pad-btn" data-dir="left" aria-label="Влево">←</button>
+          <button type="button" class="pad-btn" data-dir="down" aria-label="Вниз">↓</button>
+          <button type="button" class="pad-btn" data-dir="right" aria-label="Вправо">→</button>
+        </div>
+      </div>
+
+      <div class="auto-bar hidden" id="auto-bar">
+        <label class="speed-label" for="auto-speed">Скорость авторежима</label>
+        <input id="auto-speed" type="range" min="1" max="5" value="3" />
+        <span id="auto-speed-label">нормально</span>
+      </div>
+    </section>
+  </main>
+
+  <dialog class="modal" id="modal-leaderboard" aria-labelledby="lb-title">
+    <form method="dialog" class="modal-card">
+      <header class="modal-head">
+        <h2 id="lb-title">Рейтинг</h2>
+        <button type="submit" class="icon-close" aria-label="Закрыть">×</button>
+      </header>
+      <p class="modal-lead">Топ результатов на этом устройстве. Счёт сохраняется локально и доступен офлайн.</p>
+      <ol class="leaderboard" id="leaderboard-list"></ol>
+      <p class="empty-lb hidden" id="leaderboard-empty">Пока пусто — сыграй партию и сохрани результат.</p>
+      <menu class="modal-actions">
+        <button type="button" class="btn btn-ghost" id="btn-clear-lb">Очистить</button>
+        <button type="submit" class="btn btn-primary">Закрыть</button>
+      </menu>
+    </form>
+  </dialog>
+
+  <dialog class="modal" id="modal-how" aria-labelledby="how-title">
+    <form method="dialog" class="modal-card">
+      <header class="modal-head">
+        <h2 id="how-title">Как играть</h2>
+        <button type="submit" class="icon-close" aria-label="Закрыть">×</button>
+      </header>
+      <ul class="how-list">
+        <li>Свайпай или жми стрелки — плитки скользят в выбранную сторону.</li>
+        <li>Две одинаковые плитки сливаются в одну с удвоенным числом.</li>
+        <li>Цель — набрать максимальный счёт и дойти до 2048 (и дальше).</li>
+        <li><strong>Авторежим</strong> сам выбирает ходы по эвристике: пустые клетки, монотонность и гладкость поля.</li>
+        <li>После партии можно сохранить счёт в <strong>рейтинг</strong> под своим ником.</li>
+      </ul>
+      <menu class="modal-actions">
+        <button type="submit" class="btn btn-primary">Понятно</button>
+      </menu>
+    </form>
+  </dialog>
+
+  <footer class="footer">
+    <p>Статическая игра на GitHub Pages · работает без сервера</p>
+  </footer>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
