@@ -139,11 +139,21 @@ body {
 
 .mode-block {
   margin: 1.35rem auto 0;
-  max-width: min(92vw, 420px);
+  max-width: min(94vw, 520px);
+}
+
+.mode-panels {
+  display: grid;
+  gap: 1rem;
+}
+
+.mode-group {
+  display: grid;
+  gap: 0.55rem;
 }
 
 .mode-caption {
-  margin: 0 0 0.55rem;
+  margin: 0;
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -155,6 +165,14 @@ body {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 0.45rem;
+}
+
+.mode-switch-size {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.mode-switch-special {
+  grid-template-columns: repeat(3, 1fr);
 }
 
 .mode-btn {
@@ -264,6 +282,14 @@ body {
   gap: 0.55rem;
 }
 
+.scoreboard:has(.challenge-stat:not(.hidden)) {
+  grid-template-columns: 1fr 1fr 1fr 1.2fr;
+}
+
+.challenge-stat.hidden {
+  display: none;
+}
+
 .stat {
   position: relative;
   background: var(--surface);
@@ -354,6 +380,11 @@ body {
   user-select: none;
 }
 
+.board[data-size="2"] {
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+}
+
 .board[data-size="3"] {
   grid-template-columns: repeat(3, 1fr);
   grid-template-rows: repeat(3, 1fr);
@@ -368,6 +399,24 @@ body {
   grid-template-columns: repeat(6, 1fr);
   grid-template-rows: repeat(6, 1fr);
   gap: 6px;
+}
+
+.board[data-size="7"] {
+  grid-template-columns: repeat(7, 1fr);
+  grid-template-rows: repeat(7, 1fr);
+  gap: 4px;
+  padding: 8px;
+}
+
+.board[data-size="8"] {
+  grid-template-columns: repeat(8, 1fr);
+  grid-template-rows: repeat(8, 1fr);
+  gap: 4px;
+  padding: 8px;
+}
+
+.cell-tiny {
+  border-radius: 8px;
 }
 
 .cell {
@@ -443,6 +492,12 @@ body {
 .tile.tile-tiny {
   font-size: clamp(0.78rem, 3.2vw, 1.05rem);
   border-radius: 8px;
+}
+
+.tile.tile-micro {
+  font-size: clamp(0.62rem, 2.4vw, 0.85rem);
+  border-radius: 6px;
+  letter-spacing: -0.06em;
 }
 
 .board[data-size="3"] .cell,
@@ -705,7 +760,8 @@ body {
 }
 
 @media (max-width: 640px) {
-  .scoreboard {
+  .scoreboard,
+  .scoreboard:has(.challenge-stat:not(.hidden)) {
     grid-template-columns: 1fr 1fr;
   }
 
@@ -726,8 +782,17 @@ body {
     text-align: center;
   }
 
-  .mode-switch {
+  .mode-switch-size,
+  .mode-switch-special {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .scoreboard:has(.challenge-stat:not(.hidden)) {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .challenge-stat {
+    grid-column: 1 / -1;
   }
 }
 

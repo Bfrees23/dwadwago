@@ -129,7 +129,8 @@ export function chooseBestMove(grid) {
   const empty = emptyCount(grid);
   const size = gridSize(grid);
   let depth = empty > size * 2 ? 2 : empty > size ? 3 : 4;
-  if (size >= 6) depth = Math.min(depth, 2);
+  if (size >= 7) depth = 1;
+  else if (size >= 6) depth = Math.min(depth, 2);
   else if (size >= 5) depth = Math.min(depth, 3);
 
   let bestDir = null;
