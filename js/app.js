@@ -1,5 +1,6 @@
-import { SIZE, createGame, applyMove, maxTile } from "./game.js";
+import { createGame, applyMove, maxTile } from "./game.js";
 import { chooseBestMove } from "./ai.js";
+import { MODES, getModeById, getSavedModeId, saveModeId } from "./modes.js";
 import {
   getPlayerName,
   setPlayerName,
@@ -23,10 +24,13 @@ const btnAuto = document.getElementById("btn-auto");
 const autoBar = document.getElementById("auto-bar");
 const autoSpeed = document.getElementById("auto-speed");
 const autoSpeedLabel = document.getElementById("auto-speed-label");
+const modeSwitch = document.getElementById("mode-switch");
+const modeHint = document.getElementById("mode-hint");
 const lbDialog = document.getElementById("modal-leaderboard");
 const howDialog = document.getElementById("modal-how");
 const lbList = document.getElementById("leaderboard-list");
 const lbEmpty = document.getElementById("leaderboard-empty");
+const lbModeFilter = document.getElementById("lb-mode-filter");
 
 const SPEED_MS = { 1: 420, 2: 280, 3: 160, 4: 90, 5: 45 };
 const SPEED_LABELS = {
@@ -37,16 +41,23 @@ const SPEED_LABELS = {
   5: "turbo",
 };
 
-let state = createGame();
+let mode = getModeById(getSavedModeId());
+let state = createGame(mode.size, mode.winTile);
 let usedAuto = false;
 let autoTimer = null;
 let touchStart = null;
 let tileLayer = null;
+let lbFilterMode = mode.id;
+
+function currentSize() {
+  return state?.size || mode.size;
+}
 
 function cellPosition(r, c) {
-  const gap = 8;
+  const gap = currentSize() >= 6 ? 6 : 8;
   const pad = 10;
-  const cell = (boardEl.clientWidth - pad * 2 - gap * 3) / 4;
+  const n = currentSize();
+  const cell = (boardEl.clientWidth - pad * 2 - gap * (n - 1)) / n;
   return {
     x: pad + c * (cell + gap),
     y: pad + r * (cell + gap),
@@ -55,13 +66,21 @@ function cellPosition(r, c) {
 }
 
 function ensureBoardScaffold() {
+  const n = currentSize();
   boardEl.innerHTML = "";
-  for (let i = 0; i < SIZE * SIZE; i += 1) {
+  boardEl.style.gridTemplateColumns = `repeat(${n}, 1fr)`;
+  boardEl.style.gridTemplateRows = `repeat(${n}, 1fr)`;
+  boardEl.style.gap = n >= 6 ? "6px" : "8px";
+  boardEl.dataset.size = String(n);
+  boardEl.setAttribute("aria-label", `Поле ${n} на ${n}`);
+
+  for (let i = 0; i < n * n; i += 1) {
     const cell = document.createElement("div");
     cell.className = "cell";
     cell.setAttribute("role", "gridcell");
     boardEl.appendChild(cell);
   }
+
   tileLayer = document.createElement("div");
   tileLayer.style.position = "absolute";
   tileLayer.style.inset = "0";
@@ -73,19 +92,23 @@ function ensureBoardScaffold() {
 function renderTiles(spawned = null, mergedPositions = null) {
   if (!tileLayer) ensureBoardScaffold();
   tileLayer.innerHTML = "";
+  const n = currentSize();
 
-  for (let r = 0; r < SIZE; r += 1) {
-    for (let c = 0; c < SIZE; c += 1) {
+  for (let r = 0; r < n; r += 1) {
+    for (let c = 0; c < n; c += 1) {
       const value = state.grid[r][c];
       if (!value) continue;
       const { x, y, cell } = cellPosition(r, c);
       const tile = document.createElement("div");
       tile.className = "tile";
-      tile.dataset.v = String(value);
+      tile.dataset.v = String(Math.min(value, 65536));
+      if (value > 65536) tile.dataset.v = "65536";
       tile.textContent = String(value);
       tile.style.width = `${cell}px`;
       tile.style.height = `${cell}px`;
       tile.style.transform = `translate(${x}px, ${y}px)`;
+      if (n >= 5) tile.classList.add("tile-compact");
+      if (n >= 6) tile.classList.add("tile-tiny");
 
       if (spawned && spawned.r === r && spawned.c === c) tile.classList.add("new");
       if (mergedPositions?.has(`${r},${c}`)) tile.classList.add("merge");
@@ -97,7 +120,7 @@ function renderTiles(spawned = null, mergedPositions = null) {
 
 function updateScore(delta = 0) {
   scoreEl.textContent = String(state.score);
-  const best = setBestScore(state.score);
+  const best = setBestScore(state.score, mode.id);
   bestEl.textContent = String(best);
 
   if (delta > 0) {
@@ -110,11 +133,11 @@ function updateScore(delta = 0) {
 
 function showOverlay() {
   if (state.won && !state.over) {
-    overlayTitleEl.textContent = "2048!";
+    overlayTitleEl.textContent = `${mode.winTile}!`;
     overlayTextEl.textContent = `Счёт ${state.score}. Можно продолжать.`;
   } else {
     overlayTitleEl.textContent = "Игра окончена";
-    overlayTextEl.textContent = `Счёт ${state.score} · макс. плитка ${maxTile(state.grid)}`;
+    overlayTextEl.textContent = `${mode.label} · счёт ${state.score} · макс. плитка ${maxTile(state.grid)}`;
   }
   overlayEl.classList.remove("hidden");
 }
@@ -203,23 +226,69 @@ function doMove(dir, { fromAuto = false } = {}) {
 
 function newGame() {
   stopAuto();
-  state = createGame();
+  state = createGame(mode.size, mode.winTile);
   usedAuto = false;
   hideOverlay();
+  ensureBoardScaffold();
   renderTiles();
   updateScore(0);
+  bestEl.textContent = String(getBestScore(mode.id));
+}
+
+function syncModeUI() {
+  modeSwitch.querySelectorAll(".mode-btn").forEach((btn) => {
+    const active = btn.dataset.mode === mode.id;
+    btn.classList.toggle("is-active", active);
+    btn.setAttribute("aria-pressed", String(active));
+  });
+  modeHint.textContent = `${mode.title}: ${mode.desc}. Цель — ${mode.winTile}.`;
+  document.documentElement.style.setProperty(
+    "--board-size",
+    mode.size >= 6 ? "min(94vw, 460px)" : mode.size >= 5 ? "min(93vw, 440px)" : "min(92vw, 420px)",
+  );
+}
+
+function setMode(modeId, { restart = true } = {}) {
+  mode = saveModeId(modeId);
+  lbFilterMode = mode.id;
+  if (lbModeFilter) lbModeFilter.value = mode.id;
+  syncModeUI();
+  if (restart) newGame();
+}
+
+function renderModeSwitch() {
+  modeSwitch.innerHTML = "";
+  for (const m of MODES) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "mode-btn";
+    btn.dataset.mode = m.id;
+    btn.setAttribute("aria-pressed", "false");
+    btn.innerHTML = `<span class="mode-label">${m.label}</span><span class="mode-title">${m.title}</span>`;
+    btn.addEventListener("click", () => {
+      if (m.id === mode.id) {
+        newGame();
+        return;
+      }
+      setMode(m.id);
+    });
+    modeSwitch.appendChild(btn);
+  }
+  syncModeUI();
 }
 
 function renderLeaderboard() {
-  const list = getLeaderboard();
+  const filter = lbModeFilter?.value || "all";
+  const list = filter === "all" ? getLeaderboard(null) : getLeaderboard(filter);
   lbList.innerHTML = "";
   lbEmpty.classList.toggle("hidden", list.length > 0);
 
   list.forEach((entry, index) => {
     const li = document.createElement("li");
+    const modeText = entry.modeLabel || `${entry.modeId || 4}×${entry.modeId || 4}`;
     li.innerHTML = `
       <span class="lb-rank">${index + 1}</span>
-      <span class="lb-name">${escapeHtml(entry.name)}${entry.auto ? " · авто" : ""}</span>
+      <span class="lb-name">${escapeHtml(entry.name)}${entry.auto ? " · авто" : ""} · ${escapeHtml(modeText)}</span>
       <span class="lb-meta">
         <span class="lb-score">${entry.score}</span>
         плитка ${entry.maxTile} · ${formatDate(entry.at)}
@@ -245,9 +314,24 @@ function saveCurrentScore() {
     score: state.score,
     maxTile: maxTile(state.grid),
     auto: usedAuto,
+    modeId: mode.id,
+    modeLabel: mode.label,
   });
+  lbFilterMode = mode.id;
+  if (lbModeFilter) lbModeFilter.value = mode.id;
   renderLeaderboard();
   lbDialog.showModal();
+}
+
+function populateLbFilter() {
+  lbModeFilter.innerHTML = `<option value="all">Все режимы</option>`;
+  for (const m of MODES) {
+    const opt = document.createElement("option");
+    opt.value = m.id;
+    opt.textContent = `${m.label} — ${m.title}`;
+    lbModeFilter.appendChild(opt);
+  }
+  lbModeFilter.value = lbFilterMode;
 }
 
 function bindEvents() {
@@ -256,12 +340,19 @@ function bindEvents() {
   document.getElementById("btn-save-score").addEventListener("click", saveCurrentScore);
   document.getElementById("btn-auto").addEventListener("click", toggleAuto);
   document.getElementById("btn-leaderboard").addEventListener("click", () => {
+    populateLbFilter();
     renderLeaderboard();
     lbDialog.showModal();
   });
   document.getElementById("btn-how").addEventListener("click", () => howDialog.showModal());
   document.getElementById("btn-clear-lb").addEventListener("click", () => {
-    clearLeaderboard();
+    const filter = lbModeFilter.value;
+    clearLeaderboard(filter === "all" ? null : filter);
+    renderLeaderboard();
+  });
+
+  lbModeFilter.addEventListener("change", () => {
+    lbFilterMode = lbModeFilter.value;
     renderLeaderboard();
   });
 
@@ -296,7 +387,7 @@ function bindEvents() {
     };
     const dir = map[event.key];
     if (!dir) return;
-    if (event.target.matches("input, textarea")) return;
+    if (event.target.matches("input, textarea, select, button")) return;
     event.preventDefault();
     doMove(dir);
   });
@@ -321,8 +412,8 @@ function bindEvents() {
 }
 
 function init() {
-  ensureBoardScaffold();
-  bestEl.textContent = String(getBestScore());
+  renderModeSwitch();
+  populateLbFilter();
   autoSpeedLabel.textContent = SPEED_LABELS[autoSpeed.value];
   bindEvents();
   newGame();

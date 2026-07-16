@@ -31,6 +31,11 @@
         <button type="button" class="btn btn-primary" id="btn-new">Новая игра</button>
         <button type="button" class="btn btn-accent" id="btn-auto" aria-pressed="false">Авторежим</button>
       </div>
+      <div class="mode-block" aria-label="Режим поля">
+        <p class="mode-caption">Режим поля</p>
+        <div class="mode-switch" id="mode-switch" role="group" aria-label="Размер поля"></div>
+        <p class="mode-hint" id="mode-hint">Классика: оригинальный 2048. Цель — 2048.</p>
+      </div>
     </section>
 
     <section class="play" aria-label="Игровое поле">
@@ -87,6 +92,8 @@
         <button type="submit" class="icon-close" aria-label="Закрыть">×</button>
       </header>
       <p class="modal-lead">Топ результатов на этом устройстве. Счёт сохраняется локально и доступен офлайн.</p>
+      <label class="lb-filter-label" for="lb-mode-filter">Показать</label>
+      <select id="lb-mode-filter" class="lb-filter"></select>
       <ol class="leaderboard" id="leaderboard-list"></ol>
       <p class="empty-lb hidden" id="leaderboard-empty">Пока пусто — сыграй партию и сохрани результат.</p>
       <menu class="modal-actions">
@@ -105,7 +112,8 @@
       <ul class="how-list">
         <li>Свайпай или жми стрелки — плитки скользят в выбранную сторону.</li>
         <li>Две одинаковые плитки сливаются в одну с удвоенным числом.</li>
-        <li>Цель — набрать максимальный счёт и дойти до 2048 (и дальше).</li>
+        <li>Выбери <strong>режим поля</strong>: 3×3, 4×4, 5×5 или 6×6 — у каждого свой рекорд и цель.</li>
+        <li>Цель — набрать максимальный счёт и дойти до целевой плитки (и дальше).</li>
         <li><strong>Авторежим</strong> сам выбирает ходы по эвристике: пустые клетки, монотонность и гладкость поля.</li>
         <li>После партии можно сохранить счёт в <strong>рейтинг</strong> под своим ником.</li>
       </ul>
