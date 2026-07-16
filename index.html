@@ -29,6 +29,7 @@
       <p class="tagline">Выбери режим. Сложи плитки. Запиши рекорд в GitHub.</p>
       <div class="cta-row">
         <button type="button" class="btn btn-primary" id="btn-new">Новая игра</button>
+        <button type="button" class="btn btn-ghost" id="btn-undo" disabled>Отмена</button>
         <button type="button" class="btn btn-accent" id="btn-auto" aria-pressed="false">Авторежим</button>
       </div>
     </section>
@@ -68,11 +69,7 @@
         <div class="overlay hidden" id="overlay" role="status" aria-live="polite">
           <p class="overlay-title" id="overlay-title">Игра окончена</p>
           <p class="overlay-text" id="overlay-text">Больше ходов нет</p>
-          <div class="overlay-actions">
-            <button type="button" class="btn btn-primary" id="btn-restart">Сыграть ещё</button>
-            <button type="button" class="btn btn-ghost" id="btn-save-score">В локальный</button>
-            <button type="button" class="btn btn-accent" id="btn-save-github">В GitHub</button>
-          </div>
+          <div class="overlay-actions" id="overlay-actions"></div>
         </div>
       </div>
 
@@ -87,9 +84,16 @@
       </div>
 
       <div class="auto-bar hidden" id="auto-bar">
-        <label class="speed-label" for="auto-speed">Скорость авторежима</label>
-        <input id="auto-speed" type="range" min="1" max="5" value="3" />
-        <span id="auto-speed-label">нормально</span>
+        <div class="auto-controls">
+          <label class="speed-label" for="auto-speed">Скорость</label>
+          <input id="auto-speed" type="range" min="1" max="5" value="3" />
+          <span id="auto-speed-label">нормально</span>
+        </div>
+        <div class="auto-controls">
+          <label class="speed-label" for="auto-strength">Сила ИИ</label>
+          <input id="auto-strength" type="range" min="1" max="5" value="3" />
+          <span id="auto-strength-label">умный</span>
+        </div>
       </div>
     </section>
   </main>
@@ -131,7 +135,8 @@
       <ul class="how-list">
         <li>Сверху над полем выбери <strong>режим</strong> — в списке или кнопками (размеры 2×2–8×8 и особые правила).</li>
         <li>Свайпай или жми стрелки — плитки скользят в выбранную сторону.</li>
-        <li><strong>Авторежим</strong> сам выбирает ходы по эвристике.</li>
+        <li><strong>Отмена</strong> (кнопка или Ctrl/Cmd+Z) откатывает ход.</li>
+        <li><strong>Авторежим</strong> — улучшенный ИИ (expectimax + snake-эвристика) в Web Worker; можно выбрать скорость и силу.</li>
         <li><strong>Локальный рейтинг</strong> — только на этом устройстве.</li>
         <li><strong>Рейтинг GitHub</strong>: кнопка «В GitHub» откроет Issue с результатом → Action запишет его в <code>data/leaderboard.json</code> → сайт подтянет общий топ.</li>
       </ul>

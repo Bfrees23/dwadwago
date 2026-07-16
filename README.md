@@ -1,57 +1,49 @@
 # 2048
 
-Классическая головоломка **2048** с авторежимом и рейтингом.  
-Чистый HTML/CSS/JS — без сборки и без сервера. Работает на GitHub Pages и офлайн.
+Классическая головоломка с режимами, умным авторежимом и рейтингом на GitHub Pages.
 
 ## Возможности
 
-- **Выбор режима** прямо над полем: список + кнопки
-- **Размеры поля**: 2×2 … 8×8
-- **Особые режимы**: Четвёрки, Хаос, Джокер, Спринт, Блиц, Широкий хаос
-- **Авторежим** с регулировкой скорости
-- **Локальный рейтинг** (localStorage) и **общий рейтинг на GitHub**
+- **Выбор режима** над полем: размеры 2×2…8×8 и особые правила
+- **Отмена хода** (кнопка / Ctrl+Z)
+- **Авторежим**: expectimax + snake-эвристика, Web Worker, скорость и сила ИИ
+- **Локальный рейтинг** и **общий рейтинг на GitHub** (`data/leaderboard.json`)
 
-## Как открыть локально
+## Локально
 
-Нужен статический сервер (ES-модули не работают через `file://`):
+ES-модули требуют http(s), не `file://`:
 
 ```bash
 python3 -m http.server 8080
 ```
 
-Открой http://localhost:8080
+Тесты:
 
-## Публикация на GitHub Pages
+```bash
+node js/game.test.mjs
+```
+
+## GitHub Pages
 
 1. **Settings → Pages → Source: GitHub Actions**
-2. После пуша в `main` сайт: `https://bfrees23.github.io/dwadwago/`
+2. Сайт: `https://bfrees23.github.io/dwadwago/`
 
-## Рейтинг на GitHub (без своего сервера)
+## Рейтинг на GitHub
 
-Схема:
+1. **В GitHub** → Issue с JSON счёта  
+2. Action `ingest-score` пишет в `data/leaderboard.json`  
+3. Игра читает общий топ с `raw.githubusercontent.com`
 
-1. Игрок жмёт **«В GitHub»** → открывается Issue с JSON результата
-2. Workflow `ingest-score` читает Issue, пишет запись в `data/leaderboard.json`, коммитит в `main`
-3. Pages обновляется, игра читает общий топ из этого JSON
-
-Файлы:
-
-- `data/leaderboard.json` — общий рейтинг
-- `.github/workflows/ingest-score.yml` — приём результатов
-- `.github/ISSUE_TEMPLATE/score.yml` — шаблон Issue
-
-Локальный рейтинг по-прежнему доступен офлайн.
-
-## Структура
+## Архитектура
 
 ```
-index.html
-css/styles.css
-data/leaderboard.json
+js/rng.js           # seedable RNG
+js/game.js          # движок: плитки с id, undo, правила спавна
+js/ai-core.js       # ИИ (expectimax, учитывает режим)
+js/ai.js            # обёртка + Web Worker
+js/ai-worker.js
+js/board-view.js    # отрисовка с анимацией transform
 js/modes.js
-js/game.js
-js/ai.js
-js/leaderboard.js          # локальный
-js/github-leaderboard.js   # общий (GitHub)
-js/app.js
+js/leaderboard.js / github-leaderboard.js
+js/app.js           # связка UI
 ```
