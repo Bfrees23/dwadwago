@@ -1,6 +1,7 @@
 const STORAGE_KEY = "dwadwago-2048-leaderboard";
 const NAME_KEY = "dwadwago-2048-player";
-const BEST_KEY = "dwadwago-2048-best";
+const BEST_KEY = "dwadwago-2048-best-by-mode";
+const LEGACY_BEST_KEY = "dwadwago-2048-best";
 const MAX_ENTRIES = 15;
 
 function readJson(key, fallback) {
@@ -24,47 +25,78 @@ export function setPlayerName(name) {
   return cleaned;
 }
 
-export function getBestScore() {
-  const value = Number(localStorage.getItem(BEST_KEY) || 0);
+function readBestMap() {
+  const map = readJson(BEST_KEY, null);
+  if (map && typeof map === "object") return map;
+
+  // migrate legacy single best into classic 4×4
+  const legacy = Number(localStorage.getItem(LEGACY_BEST_KEY) || 0);
+  if (Number.isFinite(legacy) && legacy > 0) {
+    const migrated = { 4: legacy };
+    localStorage.setItem(BEST_KEY, JSON.stringify(migrated));
+    return migrated;
+  }
+  return {};
+}
+
+export function getBestScore(modeId = "4") {
+  const map = readBestMap();
+  const value = Number(map[String(modeId)] || 0);
   return Number.isFinite(value) ? value : 0;
 }
 
-export function setBestScore(score) {
-  const best = Math.max(getBestScore(), Number(score) || 0);
-  localStorage.setItem(BEST_KEY, String(best));
+export function setBestScore(score, modeId = "4") {
+  const map = readBestMap();
+  const key = String(modeId);
+  const best = Math.max(Number(map[key] || 0), Number(score) || 0);
+  map[key] = best;
+  localStorage.setItem(BEST_KEY, JSON.stringify(map));
   return best;
 }
 
-export function getLeaderboard() {
+export function getLeaderboard(modeId = null) {
   const list = readJson(STORAGE_KEY, []);
   if (!Array.isArray(list)) return [];
   return list
     .filter((e) => e && typeof e.score === "number")
+    .filter((e) => (modeId == null ? true : String(e.modeId || "4") === String(modeId)))
     .sort((a, b) => b.score - a.score || b.maxTile - a.maxTile)
     .slice(0, MAX_ENTRIES);
 }
 
-export function saveScore({ name, score, maxTile, auto }) {
+export function saveScore({ name, score, maxTile, auto, modeId = "4", modeLabel = "4×4" }) {
   const entry = {
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     name: (name || "Гость").trim().slice(0, 16) || "Гость",
     score: Number(score) || 0,
     maxTile: Number(maxTile) || 0,
     auto: Boolean(auto),
+    modeId: String(modeId),
+    modeLabel: String(modeLabel),
     at: new Date().toISOString(),
   };
 
-  const list = getLeaderboard();
+  const all = readJson(STORAGE_KEY, []);
+  const list = Array.isArray(all) ? all : [];
   list.push(entry);
+
+  // keep top scores overall, but prefer retaining mode diversity
   list.sort((a, b) => b.score - a.score || b.maxTile - a.maxTile);
-  const next = list.slice(0, MAX_ENTRIES);
+  const next = list.slice(0, 60);
   localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-  setBestScore(entry.score);
-  return next;
+  setBestScore(entry.score, entry.modeId);
+  return getLeaderboard(entry.modeId);
 }
 
-export function clearLeaderboard() {
-  localStorage.removeItem(STORAGE_KEY);
+export function clearLeaderboard(modeId = null) {
+  if (modeId == null) {
+    localStorage.removeItem(STORAGE_KEY);
+    return;
+  }
+  const all = readJson(STORAGE_KEY, []);
+  const list = Array.isArray(all) ? all : [];
+  const next = list.filter((e) => String(e.modeId || "4") !== String(modeId));
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
 }
 
 export function formatDate(iso) {
