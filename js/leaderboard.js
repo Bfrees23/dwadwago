@@ -99,6 +99,17 @@ export function clearLeaderboard(modeId = null) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
 }
 
+export function clearBestScores() {
+  localStorage.removeItem(BEST_KEY);
+  localStorage.removeItem(LEGACY_BEST_KEY);
+}
+
+export function clearAllLocalData() {
+  clearLeaderboard(null);
+  clearBestScores();
+  localStorage.removeItem(NAME_KEY);
+}
+
 export function formatDate(iso) {
   try {
     return new Intl.DateTimeFormat("ru-RU", {

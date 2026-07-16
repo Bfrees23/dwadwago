@@ -26,9 +26,17 @@ import {
   getLeaderboard,
   saveScore,
   clearLeaderboard,
+  clearAllLocalData,
   formatDate,
 } from "./leaderboard.js";
-import { fetchGitHubLeaderboard, buildScoreIssueUrl } from "./github-leaderboard.js";
+import { fetchGitHubLeaderboard, buildScoreIssueUrl, detectRepo } from "./github-leaderboard.js";
+import {
+  isAdmin,
+  getAdminSession,
+  loginWithGitHubToken,
+  clearAdminSession,
+  adminHelpText,
+} from "./admin.js";
 
 const boardEl = document.getElementById("board");
 const scoreEl = document.getElementById("score");
@@ -62,6 +70,14 @@ const lbStatus = document.getElementById("lb-status");
 const tabGithub = document.getElementById("tab-github");
 const tabLocal = document.getElementById("tab-local");
 const btnClearLb = document.getElementById("btn-clear-lb");
+const btnAdmin = document.getElementById("btn-admin");
+const adminBadge = document.getElementById("admin-badge");
+const adminLoginDialog = document.getElementById("modal-admin-login");
+const adminDialog = document.getElementById("modal-admin");
+const adminTokenInput = document.getElementById("admin-token");
+const adminLoginStatus = document.getElementById("admin-login-status");
+const adminLoginHelp = document.getElementById("admin-login-help");
+const adminSessionText = document.getElementById("admin-session-text");
 
 const SPEED_MS = { 1: 420, 2: 280, 3: 160, 4: 90, 5: 40 };
 const SPEED_LABELS = { 1: "медленно", 2: "спокойно", 3: "нормально", 4: "быстро", 5: "turbo" };
@@ -403,16 +419,73 @@ function renderModePanels() {
   syncModeUI();
 }
 
+function syncAdminUI() {
+  const session = getAdminSession();
+  const admin = Boolean(session);
+  if (adminBadge) {
+    adminBadge.classList.toggle("hidden", !admin);
+    adminBadge.textContent = admin ? `Админ: @${session.login}` : "";
+  }
+  if (btnAdmin) {
+    btnAdmin.textContent = admin ? "Админ ✓" : "Админ";
+    btnAdmin.classList.toggle("is-active-admin", admin);
+  }
+  if (btnClearLb) {
+    // Clearing scores is an admin-only action
+    btnClearLb.classList.toggle("hidden", !admin || lbTab !== "local");
+  }
+}
+
+function openAdmin() {
+  if (isAdmin()) {
+    const session = getAdminSession();
+    const { owner, name } = detectRepo();
+    adminSessionText.textContent = `Вы вошли как @${session.login}. Репозиторий ${owner}/${name}.`;
+    adminDialog.showModal();
+    return;
+  }
+  const help = adminHelpText();
+  adminLoginHelp.innerHTML = `
+    Нужен токен аккаунта <strong>@${help.owner}</strong>.
+    Создай Fine-grained PAT <em>без прав</em> (достаточен доступ к профилю) или classic token без галочек scopes.
+    Токен никуда кроме GitHub API не уходит и в репозиторий не сохраняется.
+  `;
+  adminLoginStatus.textContent = "";
+  if (adminTokenInput) adminTokenInput.value = "";
+  adminLoginDialog.showModal();
+  queueMicrotask(() => adminTokenInput?.focus());
+}
+
+async function submitAdminLogin() {
+  adminLoginStatus.textContent = "Проверяю GitHub…";
+  const result = await loginWithGitHubToken(adminTokenInput.value);
+  if (!result.ok) {
+    adminLoginStatus.textContent = result.error;
+    return;
+  }
+  adminTokenInput.value = "";
+  adminLoginStatus.textContent = `Готово. Вход как @${result.session.login}`;
+  syncAdminUI();
+  adminLoginDialog.close();
+  openAdmin();
+}
+
+function adminLogout() {
+  clearAdminSession();
+  syncAdminUI();
+  adminDialog.close();
+}
+
 function setLbTab(tab) {
   lbTab = tab;
   tabGithub.classList.toggle("is-active", tab === "github");
   tabLocal.classList.toggle("is-active", tab === "local");
   tabGithub.setAttribute("aria-selected", String(tab === "github"));
   tabLocal.setAttribute("aria-selected", String(tab === "local"));
-  btnClearLb.classList.toggle("hidden", tab !== "local");
   lbLead.textContent = tab === "github"
     ? "Общий рейтинг в репозитории GitHub (`data/leaderboard.json`). Отправка — через Issue, запись делает Action."
     : "Локальный топ только на этом устройстве (localStorage), доступен офлайн.";
+  syncAdminUI();
   renderLeaderboard();
 }
 
@@ -522,9 +595,51 @@ function bindEvents() {
   document.getElementById("btn-how").addEventListener("click", () => howDialog.showModal());
   document.getElementById("btn-refresh-lb").addEventListener("click", () => renderLeaderboard());
   btnClearLb.addEventListener("click", () => {
+    if (!isAdmin()) {
+      lbStatus.textContent = "Очистка доступна только админу.";
+      return;
+    }
     if (lbTab !== "local") return;
     clearLeaderboard(lbModeFilter.value === "all" ? null : lbModeFilter.value);
     renderLeaderboard();
+  });
+
+  btnAdmin?.addEventListener("click", openAdmin);
+  document.getElementById("btn-admin-login-submit")?.addEventListener("click", (event) => {
+    event.preventDefault();
+    submitAdminLogin();
+  });
+  adminTokenInput?.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      submitAdminLogin();
+    }
+  });
+  document.getElementById("btn-admin-logout")?.addEventListener("click", adminLogout);
+  document.getElementById("btn-admin-clear-local")?.addEventListener("click", () => {
+    if (!isAdmin()) return;
+    if (!confirm("Сбросить локальные рейтинги, рекорды и ник на этом устройстве?")) return;
+    clearAllLocalData();
+    playerInput.value = "";
+    bestEl.textContent = String(getBestScore(mode.id));
+    renderLeaderboard();
+    adminSessionText.textContent = "Локальные данные сброшены.";
+  });
+  document.getElementById("btn-admin-open-repo")?.addEventListener("click", () => {
+    const { owner, name } = detectRepo();
+    window.open(`https://github.com/${owner}/${name}`, "_blank", "noopener,noreferrer");
+  });
+  document.getElementById("btn-admin-open-scores")?.addEventListener("click", () => {
+    const { owner, name } = detectRepo();
+    window.open(`https://github.com/${owner}/${name}/issues?q=is%3Aissue+score%3A`, "_blank", "noopener,noreferrer");
+  });
+
+  // Prevent form method=dialog from closing before login finishes
+  document.getElementById("form-admin-login")?.addEventListener("submit", (event) => {
+    if (event.submitter && event.submitter.id === "btn-admin-login-submit") {
+      event.preventDefault();
+      submitAdminLogin();
+    }
   });
 
   tabGithub.addEventListener("click", () => setLbTab("github"));
@@ -597,16 +712,24 @@ function bindEvents() {
 }
 
 function init() {
-  // ensure overlay actions container id
-  if (!overlayActions.id) overlayActions.id = "overlay-actions";
-  renderModeSelect();
-  renderModePanels();
-  populateLbFilter();
-  setLbTab("github");
-  autoSpeedLabel.textContent = SPEED_LABELS[autoSpeed.value];
-  if (autoStrengthLabel) autoStrengthLabel.textContent = STRENGTH_LABELS[autoStrength.value];
-  bindEvents();
-  newGame();
+  try {
+    if (overlayActions && !overlayActions.id) overlayActions.id = "overlay-actions";
+    renderModeSelect();
+    renderModePanels();
+    populateLbFilter();
+    setLbTab("github");
+    syncAdminUI();
+    autoSpeedLabel.textContent = SPEED_LABELS[autoSpeed.value];
+    if (autoStrengthLabel) autoStrengthLabel.textContent = STRENGTH_LABELS[autoStrength.value];
+    bindEvents();
+    newGame();
+  } catch (err) {
+    console.error(err);
+    const msg = document.createElement("p");
+    msg.className = "boot-error";
+    msg.textContent = `Не удалось запустить игру: ${err?.message || err}`;
+    document.body.prepend(msg);
+  }
 }
 
 init();

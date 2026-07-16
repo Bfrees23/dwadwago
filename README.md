@@ -34,6 +34,17 @@ node js/game.test.mjs
 2. Action `ingest-score` пишет в `data/leaderboard.json`  
 3. Игра читает общий топ с `raw.githubusercontent.com`
 
+## Админ
+
+Кнопка **Админ** → вход только через GitHub PAT аккаунта владельца репозитория (`Bfrees23`).
+
+1. Создай Fine-grained или classic token (scopes можно не включать — нужен только `GET /user`)
+2. Вставь токен в форму — игра спросит `api.github.com/user`
+3. Если логин не владелец репо — отказ
+4. Токен не сохраняется в репозитории; сессия держится в `sessionStorage` вкладки ~12 часов
+
+Чужой GitHub-аккаунт зайти не сможет.
+
 ## Архитектура
 
 ```

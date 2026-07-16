@@ -20,8 +20,10 @@
     <nav class="top-actions" aria-label="Основные действия">
       <button type="button" class="btn btn-ghost" id="btn-leaderboard" aria-haspopup="dialog">Рейтинг</button>
       <button type="button" class="btn btn-ghost" id="btn-how">Как играть</button>
+      <button type="button" class="btn btn-ghost btn-admin" id="btn-admin" aria-haspopup="dialog">Админ</button>
     </nav>
   </header>
+  <p class="admin-badge hidden" id="admin-badge" aria-live="polite"></p>
 
   <main class="shell">
     <section class="hero" aria-labelledby="brand-title">
@@ -142,6 +144,49 @@
       </ul>
       <menu class="modal-actions">
         <button type="submit" class="btn btn-primary">Понятно</button>
+      </menu>
+    </form>
+  </dialog>
+
+  <dialog class="modal" id="modal-admin-login" aria-labelledby="admin-login-title">
+    <form method="dialog" class="modal-card" id="form-admin-login">
+      <header class="modal-head">
+        <h2 id="admin-login-title">Вход админа</h2>
+        <button type="submit" class="icon-close" aria-label="Закрыть" value="cancel">×</button>
+      </header>
+      <p class="modal-lead">
+        Войти может <strong>только владелец репозитория</strong> через свой GitHub Personal Access Token.
+        Чужой аккаунт будет отклонён.
+      </p>
+      <label class="lb-filter-label" for="admin-token">GitHub PAT</label>
+      <input id="admin-token" class="admin-token-input" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_… или ghp_…" />
+      <p class="admin-login-help" id="admin-login-help"></p>
+      <p class="lb-status" id="admin-login-status" aria-live="polite"></p>
+      <menu class="modal-actions">
+        <a class="btn btn-ghost" id="admin-token-link" href="https://github.com/settings/tokens?type=beta" target="_blank" rel="noopener noreferrer">Создать токен</a>
+        <button type="button" class="btn btn-primary" id="btn-admin-login-submit">Войти</button>
+      </menu>
+    </form>
+  </dialog>
+
+  <dialog class="modal" id="modal-admin" aria-labelledby="admin-title">
+    <form method="dialog" class="modal-card">
+      <header class="modal-head">
+        <h2 id="admin-title">Панель админа</h2>
+        <button type="submit" class="icon-close" aria-label="Закрыть">×</button>
+      </header>
+      <p class="modal-lead" id="admin-session-text">Вы вошли.</p>
+      <ul class="how-list">
+        <li>Сессия только в этой вкладке браузера (до ~12 часов).</li>
+        <li>Токен на сервер игры не отправляется — проверяется напрямую на api.github.com.</li>
+        <li>Общий рейтинг на GitHub правится через Issues / файл <code>data/leaderboard.json</code> в репозитории.</li>
+      </ul>
+      <menu class="modal-actions admin-actions">
+        <button type="button" class="btn btn-ghost" id="btn-admin-open-repo">Репозиторий</button>
+        <button type="button" class="btn btn-ghost" id="btn-admin-open-scores">Issues score</button>
+        <button type="button" class="btn btn-ghost" id="btn-admin-clear-local">Сбросить локальные данные</button>
+        <button type="button" class="btn btn-accent" id="btn-admin-logout">Выйти</button>
+        <button type="submit" class="btn btn-primary">Закрыть</button>
       </menu>
     </form>
   </dialog>
