@@ -1,4 +1,17 @@
 {
-  "updatedAt": null,
-  "entries": []
+  "updatedAt": "2026-07-16T12:07:01.317Z",
+  "entries": [
+    {
+      "id": "gh-7",
+      "name": "Гость",
+      "score": 48,
+      "maxTile": 16,
+      "modeId": "2",
+      "modeLabel": "Мини (2×2)",
+      "auto": false,
+      "at": "2026-07-16T12:06:47.461Z",
+      "githubUser": "Bfrees23",
+      "issueNumber": 7
+    }
+  ]
 }
