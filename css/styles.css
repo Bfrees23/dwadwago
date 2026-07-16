@@ -280,6 +280,65 @@ body {
   display: none !important;
 }
 
+.btn-admin {
+  opacity: 0.72;
+}
+
+.btn-admin.is-active-admin {
+  opacity: 1;
+  border-color: rgba(224, 122, 58, 0.45);
+  color: var(--accent-deep);
+}
+
+.boot-error {
+  margin: 1rem;
+  padding: 1rem;
+  border-radius: 12px;
+  background: #ffe8e0;
+  color: #7a2410;
+  font-family: var(--font-body);
+  font-weight: 700;
+}
+
+.admin-badge {
+  max-width: 920px;
+  margin: -0.35rem auto 0.5rem;
+  padding: 0 1.25rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--accent-deep);
+}
+
+.admin-token-input {
+  width: 100%;
+  margin-bottom: 0.55rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.75rem 0.85rem;
+  font: inherit;
+  font-weight: 600;
+  color: var(--bg-deep);
+  background: rgba(15, 61, 62, 0.04);
+}
+
+.admin-login-help {
+  margin: 0 0 0.35rem;
+  font-size: 0.88rem;
+  color: var(--ink-soft);
+  line-height: 1.45;
+}
+
+.admin-actions {
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}
+
+.admin-actions a.btn {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+
 .btn {
   appearance: none;
   border: none;
