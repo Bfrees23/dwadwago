@@ -5,6 +5,17 @@ const DIRS = {
   right: { dr: 0, dc: 1 },
 };
 
+const DEFAULT_RULES = {
+  size: 4,
+  winTile: 2048,
+  spawnTwoChance: 0.9,
+  spawnEightChance: 0,
+  spawnPerMove: 1,
+  startTiles: 2,
+  maxMoves: null,
+  timeLimitSec: null,
+};
+
 export function gridSize(grid) {
   return grid.length;
 }
@@ -29,13 +40,29 @@ function emptyCells(grid) {
   return cells;
 }
 
-export function addRandomTile(grid) {
+function pickSpawnValue(rules) {
+  const eightChance = rules.spawnEightChance || 0;
+  if (eightChance > 0 && Math.random() < eightChance) return 8;
+  return Math.random() < (rules.spawnTwoChance ?? 0.9) ? 2 : 4;
+}
+
+export function addRandomTile(grid, rules = DEFAULT_RULES) {
   const cells = emptyCells(grid);
   if (!cells.length) return null;
   const [r, c] = cells[Math.floor(Math.random() * cells.length)];
-  const value = Math.random() < 0.9 ? 2 : 4;
+  const value = pickSpawnValue(rules);
   grid[r][c] = value;
   return { r, c, value };
+}
+
+function addRandomTiles(grid, count, rules) {
+  const spawned = [];
+  for (let i = 0; i < count; i += 1) {
+    const tile = addRandomTile(grid, rules);
+    if (!tile) break;
+    spawned.push(tile);
+  }
+  return spawned;
 }
 
 function slideLine(line) {
@@ -143,17 +170,21 @@ export function maxTile(grid) {
   return max;
 }
 
-export function createGame(size = 4, winTile = 2048) {
-  const grid = createEmptyGrid(size);
-  addRandomTile(grid);
-  addRandomTile(grid);
+export function createGame(rulesInput = {}) {
+  const rules = { ...DEFAULT_RULES, ...rulesInput };
+  const grid = createEmptyGrid(rules.size);
+  addRandomTiles(grid, rules.startTiles, rules);
   return {
     grid,
     size: gridSize(grid),
     score: 0,
     won: false,
     over: false,
-    winTile,
+    winTile: rules.winTile,
+    rules,
+    moves: 0,
+    movesLeft: rules.maxMoves,
+    reason: null,
   };
 }
 
@@ -165,12 +196,23 @@ export function applyMove(state, dir) {
     return { ...state, moved: false, scoreGained: 0, spawned: null, mergeCells: [] };
   }
 
+  const rules = state.rules || DEFAULT_RULES;
   const grid = result.grid;
-  const spawned = addRandomTile(grid);
+  const spawnedList = addRandomTiles(grid, rules.spawnPerMove || 1, rules);
+  const spawned = spawnedList[spawnedList.length - 1] || null;
   const score = state.score + result.scoreGained;
-  const winTile = state.winTile || 2048;
+  const winTile = state.winTile || rules.winTile || 2048;
   const won = state.won || maxTile(grid) >= winTile;
-  const over = !canMove(grid);
+  const moves = (state.moves || 0) + 1;
+  let movesLeft = state.movesLeft;
+  if (typeof movesLeft === "number") movesLeft = Math.max(0, movesLeft - 1);
+
+  let over = !canMove(grid);
+  let reason = over ? "board" : null;
+  if (!over && typeof movesLeft === "number" && movesLeft <= 0) {
+    over = true;
+    reason = "moves";
+  }
 
   return {
     ...state,
@@ -178,9 +220,13 @@ export function applyMove(state, dir) {
     score,
     won,
     over,
+    reason,
+    moves,
+    movesLeft,
     moved: true,
     scoreGained: result.scoreGained,
     spawned,
+    spawnedList,
     merges: result.merges,
     mergeCells: result.mergeCells,
   };

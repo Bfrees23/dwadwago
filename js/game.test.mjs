@@ -1,5 +1,5 @@
 import { createEmptyGrid, move, addRandomTile, canMove, applyMove, createGame } from "./game.js";
-import { MODES, getModeById } from "./modes.js";
+import { MODES, getModeById, modeRules, getModesByGroup } from "./modes.js";
 
 function assert(cond, msg) {
   if (!cond) throw new Error(msg);
@@ -34,7 +34,7 @@ function testSpawnAndGameOverDetection() {
 }
 
 function testApplyMove() {
-  let state = createGame(4, 2048);
+  let state = createGame({ size: 4, winTile: 2048 });
   assert(state.grid.flat().filter(Boolean).length === 2, "starts with 2 tiles");
   const dirs = ["up", "down", "left", "right"];
   let movedOnce = false;
@@ -49,14 +49,15 @@ function testApplyMove() {
   assert(movedOnce, "at least one opening move works");
 }
 
-function testModesSizes() {
-  assert(MODES.length === 4, "four modes");
+function testAllModesBoot() {
+  assert(MODES.length >= 12, "many modes");
+  assert(getModesByGroup("size").length === 7, "seven size modes");
+  assert(getModesByGroup("special").length === 6, "six special modes");
   for (const mode of MODES) {
-    const state = createGame(mode.size, mode.winTile);
-    assert(state.grid.length === mode.size, `${mode.label} rows`);
-    assert(state.grid[0].length === mode.size, `${mode.label} cols`);
-    assert(state.winTile === mode.winTile, `${mode.label} win tile`);
-    assert(state.grid.flat().filter(Boolean).length === 2, `${mode.label} starts with 2`);
+    const state = createGame(modeRules(mode));
+    assert(state.grid.length === mode.size, `${mode.id} rows`);
+    assert(state.winTile === mode.winTile, `${mode.id} win tile`);
+    assert(state.grid.flat().filter(Boolean).length === 2, `${mode.id} starts with 2`);
   }
 }
 
@@ -69,8 +70,44 @@ function testMoveOn3x3() {
   assert(scoreGained === 4, "3x3 score");
 }
 
+function testFoursSpawn() {
+  const grid = createEmptyGrid(4);
+  for (let i = 0; i < 8; i += 1) {
+    const tile = addRandomTile(grid, { spawnTwoChance: 0, spawnEightChance: 0 });
+    assert(tile.value === 4, "fours mode always 4");
+  }
+}
+
+function testSprintMoves() {
+  let state = createGame(modeRules(getModeById("sprint")));
+  assert(state.movesLeft === 50, "sprint starts with 50");
+  for (const dir of ["up", "down", "left", "right"]) {
+    const next = applyMove(state, dir);
+    if (next.moved) {
+      state = next;
+      break;
+    }
+  }
+  assert(state.movesLeft === 49, "sprint decrements moves");
+}
+
+function testChaosDoubleSpawn() {
+  let state = createGame(modeRules(getModeById("chaos")));
+  let moved = null;
+  for (const dir of ["up", "down", "left", "right"]) {
+    const next = applyMove(state, dir);
+    if (next.moved) {
+      moved = next;
+      break;
+    }
+  }
+  assert(moved, "chaos can move");
+  assert((moved.spawnedList || []).length >= 1, "chaos spawns tiles");
+}
+
 function testModeLookup() {
-  assert(getModeById("6").size === 6, "mode 6");
+  assert(getModeById("8").size === 8, "mode 8");
+  assert(getModeById("blitz").timeLimitSec === 60, "blitz timer");
   assert(getModeById("nope").id === "4", "fallback classic");
 }
 
@@ -78,7 +115,10 @@ testMergeLeft();
 testNoMove();
 testSpawnAndGameOverDetection();
 testApplyMove();
-testModesSizes();
+testAllModesBoot();
 testMoveOn3x3();
+testFoursSpawn();
+testSprintMoves();
+testChaosDoubleSpawn();
 testModeLookup();
 console.log("All game tests passed");

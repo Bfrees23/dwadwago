@@ -31,15 +31,14 @@
         <button type="button" class="btn btn-primary" id="btn-new">Новая игра</button>
         <button type="button" class="btn btn-accent" id="btn-auto" aria-pressed="false">Авторежим</button>
       </div>
-      <div class="mode-block" aria-label="Режим поля">
-        <p class="mode-caption">Режим поля</p>
-        <div class="mode-switch" id="mode-switch" role="group" aria-label="Размер поля"></div>
+      <div class="mode-block" aria-label="Режимы игры">
+        <div id="mode-panels" class="mode-panels"></div>
         <p class="mode-hint" id="mode-hint">Классика: оригинальный 2048. Цель — 2048.</p>
       </div>
     </section>
 
     <section class="play" aria-label="Игровое поле">
-      <div class="scoreboard">
+      <div class="scoreboard" id="scoreboard">
         <div class="stat">
           <span class="stat-label">Счёт</span>
           <span class="stat-value" id="score">0</span>
@@ -48,6 +47,10 @@
         <div class="stat">
           <span class="stat-label">Рекорд</span>
           <span class="stat-value" id="best">0</span>
+        </div>
+        <div class="stat challenge-stat hidden" id="challenge-stat">
+          <span class="stat-label" id="challenge-label">Ходы</span>
+          <span class="stat-value" id="challenge-value">0</span>
         </div>
         <div class="stat player-stat">
           <label class="stat-label" for="player-name">Игрок</label>
@@ -112,7 +115,8 @@
       <ul class="how-list">
         <li>Свайпай или жми стрелки — плитки скользят в выбранную сторону.</li>
         <li>Две одинаковые плитки сливаются в одну с удвоенным числом.</li>
-        <li>Выбери <strong>режим поля</strong>: 3×3, 4×4, 5×5 или 6×6 — у каждого свой рекорд и цель.</li>
+        <li>Выбери <strong>размер поля</strong> от 2×2 до 8×8 — у каждого свой рекорд и цель.</li>
+        <li>Или попробуй <strong>особый режим</strong>: Четвёрки, Хаос, Джокер, Спринт (50 ходов), Блиц (60 сек), Широкий хаос.</li>
         <li>Цель — набрать максимальный счёт и дойти до целевой плитки (и дальше).</li>
         <li><strong>Авторежим</strong> сам выбирает ходы по эвристике: пустые клетки, монотонность и гладкость поля.</li>
         <li>После партии можно сохранить счёт в <strong>рейтинг</strong> под своим ником.</li>
