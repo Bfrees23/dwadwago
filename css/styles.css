@@ -787,10 +787,6 @@ body {
     grid-template-columns: repeat(2, 1fr);
   }
 
-  .scoreboard:has(.challenge-stat:not(.hidden)) {
-    grid-template-columns: 1fr 1fr;
-  }
-
   .challenge-stat {
     grid-column: 1 / -1;
   }
